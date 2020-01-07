@@ -101,7 +101,7 @@ class ModelsPipeline(object):
         """
         return self.apply(lambda x: np.min(x, axis=0))
 
-    def stack(self, k=5, stratify=False, shuffle=True, seed=100, full_test=True, add_diff=False):
+    def stack(self, k=5, mode="stratify", foldgroups=None, shuffle=True, seed=100, full_test=True, add_diff=False):
         """Stacks sequence of models.
 
         Parameters
@@ -131,7 +131,7 @@ class ModelsPipeline(object):
 
         for model in self.models:
             result = model.stack(
-                k=k, stratify=stratify, shuffle=shuffle, seed=seed, full_test=full_test
+                k=k, mode=mode, foldgroups=foldgroups, shuffle=shuffle, seed=seed, full_test=full_test
             )
             train_df = pd.DataFrame(
                 result.X_train, columns=generate_columns(result.X_train, model.name)

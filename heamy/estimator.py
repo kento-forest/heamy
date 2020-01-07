@@ -156,7 +156,7 @@ class BaseEstimator(object):
         return m.hexdigest()
 
     def validate(
-        self, scorer=None, k=1, test_size=0.1, stratify=False, shuffle=True, seed=100, indices=None
+        self, scorer=None, k=1, test_size=0.1, mode="stratify", foldgroups=None, shuffle=True, seed=100, indices=None
     ):
         """Evaluate score by cross-validation.
 
@@ -193,7 +193,7 @@ class BaseEstimator(object):
         if self.use_cache:
             pdict = {
                 "k": k,
-                "stratify": stratify,
+                "mode": mode,
                 "shuffle": shuffle,
                 "seed": seed,
                 "test_size": test_size,
@@ -216,7 +216,7 @@ class BaseEstimator(object):
 
         if k == 1:
             X_train, y_train, X_test, y_test = self.dataset.split(
-                test_size=test_size, stratify=stratify, seed=seed, indices=indices
+                test_size=test_size, mode=mode, foldgroups=foldgroups, seed=seed, indices=indices
             )
             if self.use_cache and c.available:
                 prediction = c.retrieve("0")
@@ -230,9 +230,7 @@ class BaseEstimator(object):
             y_pred.append(prediction)
 
         else:
-            for i, fold in enumerate(
-                self.dataset.kfold(k, stratify=stratify, seed=seed, shuffle=shuffle)
-            ):
+            for i, fold in enumerate(self.dataset.kfold(k, mode=mode, foldgroups=foldgroups, seed=seed, shuffle=shuffle)):
                 X_train, y_train, X_test, y_test, train_index, test_index = fold
                 if self.use_cache and c.available:
                     prediction = c.retrieve(str(i))
@@ -254,7 +252,7 @@ class BaseEstimator(object):
 
         return y_true, y_pred
 
-    def stack(self, k=5, stratify=False, shuffle=True, seed=100, full_test=True):
+    def stack(self, k=5, mode="stratify", foldgroups=None, shuffle=True, seed=100, full_test=True):
         """Stack a single model. You should rarely be using this method. Use `ModelsPipeline.stack` instead.
 
         Parameters
@@ -276,7 +274,7 @@ class BaseEstimator(object):
         if self.use_cache:
             pdict = {
                 "k": k,
-                "stratify": stratify,
+                "mode": mode,
                 "shuffle": shuffle,
                 "seed": seed,
                 "full_test": full_test,
@@ -292,9 +290,7 @@ class BaseEstimator(object):
             elif not self.dataset.loaded:
                 self.dataset.load()
 
-        for i, fold in enumerate(
-            self.dataset.kfold(k, stratify=stratify, seed=seed, shuffle=shuffle)
-        ):
+        for i, fold in enumerate(self.dataset.kfold(k, mode=mode, foldgroups=foldgroups, seed=seed, shuffle=shuffle)):
             X_train, y_train, X_test, y_test, train_index, test_index = fold
             logger.info("Calculating %s's fold #%s" % (self._name, i + 1))
             if full_test:
