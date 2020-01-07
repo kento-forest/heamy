@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix, csc_matrix
 
-from sklearn.model_selection import train_test_split, StratifiedKFold, KFold
+from sklearn.model_selection import train_test_split, StratifiedKFold, KFold, GroupKFold
 from .cache import Cache, numpy_buffer
 from .utils.main import idx, concat
 
@@ -239,13 +239,13 @@ class Dataset(object):
 
         return X_train, y_train, X_test, y_test
 
-    def kfold(self, k=5, stratify=False, shuffle=True, seed=33):
+    def kfold(self, k=5, mode="stratify", foldgroups=None, shuffle=True, seed=33):
         """K-Folds cross validation iterator.
 
         Parameters
         ----------
         k : int, default 5
-        stratify : bool, default False
+        mode : str, default "stratify"
         shuffle : bool, default True
         seed : int, default 33
 
@@ -253,15 +253,25 @@ class Dataset(object):
         -------
         X_train, y_train, X_test, y_test, train_index, test_index
         """
-        if stratify:
+        if mode=="stratify":
             kf = StratifiedKFold(n_splits=k, random_state=seed, shuffle=shuffle)
+        elif mode=="group":
+            kf = GroupKFold(n_splits=k, random_state=seed, shuffle=shuffle)
         else:
             kf = KFold(n_splits=k, random_state=seed, shuffle=shuffle)
 
-        for train_index, test_index in kf.split(self.X_train, self.y_train):
-            X_train, y_train = idx(self.X_train, train_index), self.y_train[train_index]
-            X_test, y_test = idx(self.X_train, test_index), self.y_train[test_index]
-            yield X_train, y_train, X_test, y_test, train_index, test_index
+        
+        if mode=="group":
+            for train_index, test_index in kf.split(self.X_train, self.y_train, groups=foldgroups):
+                X_train, y_train = idx(self.X_train, train_index), self.y_train[train_index]
+                X_test, y_test = idx(self.X_train, test_index), self.y_train[test_index]
+                yield X_train, y_train, X_test, y_test, train_index, test_index
+            
+        else:
+            for train_index, test_index in kf.split(self.X_train, self.y_train):
+                X_train, y_train = idx(self.X_train, train_index), self.y_train[train_index]
+                X_test, y_test = idx(self.X_train, test_index), self.y_train[test_index]
+                yield X_train, y_train, X_test, y_test, train_index, test_index
 
     @property
     def X_train(self):
